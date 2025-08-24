@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     websockify \
     python3 python3-pip \
     curl wget git \
-    firefox-esr \
+    firefox \
+    imagemagick \
     nano vim \
     sudo \
     && rm -rf /var/lib/apt/lists/*

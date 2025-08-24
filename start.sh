@@ -33,9 +33,6 @@ websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
 # Wait for websockify to start
 sleep 2
 
-# Install ImageMagick for screenshot conversion
-apt-get update && apt-get install -y imagemagick
-
 # Create sandbox user home directory
 mkdir -p /home/sandbox
 chown -R sandbox:sandbox /home/sandbox
