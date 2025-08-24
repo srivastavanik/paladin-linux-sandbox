@@ -62,4 +62,37 @@ netstat -ln | grep :6080 || echo "noVNC port 6080 not listening"
 
 echo "Starting FastAPI server..."
 cd /app
-python3 -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info &
+
+echo "All services started!"
+echo "API Server: http://0.0.0.0:8080"
+echo "noVNC: http://0.0.0.0:6080/vnc.html"
+echo "VNC Direct: localhost:5900"
+
+# Keep container running and monitor services
+while true; do
+    # Check if FastAPI is still running
+    if ! pgrep -f "uvicorn main:app" > /dev/null; then
+        echo "FastAPI server stopped! Restarting..."
+        cd /app
+        python3 -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info &
+    fi
+    
+    # Check other critical services
+    if ! pgrep -f "Xvfb" > /dev/null; then
+        echo "Xvfb stopped! Restarting..."
+        Xvfb :0 -screen 0 1920x1080x24 -nolisten tcp &
+    fi
+    
+    if ! pgrep -f "x11vnc" > /dev/null; then
+        echo "x11vnc stopped! Restarting..."
+        x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet &
+    fi
+    
+    if ! pgrep -f "websockify" > /dev/null; then
+        echo "websockify stopped! Restarting..."
+        websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
+    fi
+    
+    sleep 10
+done
