@@ -4,34 +4,30 @@
 
 echo "Starting Paladin Linux Sandbox..."
 
+# Respect Render's PORT for primary HTTP service
+PORT=${PORT:-8080}
+
+# Start FastAPI API FIRST on the primary port so Render binds correctly
+echo "Starting FastAPI server on port ${PORT}..."
+cd /app
+python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT} --log-level info &
+
 # Start Xvfb (virtual framebuffer)
 echo "Starting Xvfb..."
 Xvfb :0 -screen 0 1920x1080x24 -nolisten tcp &
 export DISPLAY=:0
 
-# Wait for X server to start
-sleep 2
-
 # Start window manager
 echo "Starting Fluxbox desktop..."
 fluxbox &
-
-# Wait for desktop to start
-sleep 3
 
 # Start VNC server
 echo "Starting x11vnc..."
 x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet &
 
-# Wait for VNC to start
-sleep 2
-
-# Start websockify for noVNC
-echo "Starting websockify for noVNC..."
+# Start websockify for noVNC (secondary port)
+echo "Starting websockify for noVNC on 6080..."
 websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
-
-# Wait for websockify to start
-sleep 2
 
 # Create sandbox user home directory
 mkdir -p /home/sandbox

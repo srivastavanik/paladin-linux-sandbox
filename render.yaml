@@ -3,7 +3,7 @@ services:
     name: paladin-linux-sandbox
     runtime: docker
     plan: starter
-    dockerfilePath: ./Dockerfile-mock
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
     envVars:
