@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
     websockify \
     python3 python3-pip \
     curl wget \
+    bzip2 \
     ca-certificates \
+    fontconfig \
     libgtk-3-0 libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 libnss3 libxss1 \
     libx11-6 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 \
     libglib2.0-0 libpango-1.0-0 libatk-bridge2.0-0 libgbm1 \

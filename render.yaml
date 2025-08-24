@@ -6,6 +6,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
+    buildCommand: "echo Building sandbox..." 
+    startCommand: "bash /start.sh"
     envVars:
       - key: DISPLAY
         value: :0
