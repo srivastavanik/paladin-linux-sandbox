@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: paladin-linux-sandbox
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DISPLAY
+        value: :0
+      - key: VNC_PORT
+        value: 5900
+      - key: NOVNC_PORT
+        value: 6080
+      - key: API_PORT
+        value: 8080
+    # Expose both API and VNC ports
+    # Note: Render will assign a single public port, but internal services can use multiple ports
