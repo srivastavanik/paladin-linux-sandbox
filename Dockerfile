@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     firefox \
     imagemagick \
     nano \
+    net-tools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

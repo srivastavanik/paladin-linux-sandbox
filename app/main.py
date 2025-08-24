@@ -65,21 +65,17 @@ async def root():
 async def health_check():
     """Check sandbox health and availability."""
     try:
-        # Check if X server is running
-        display_check = subprocess.run(
-            ["xdpyinfo", "-display", ":0"],
-            capture_output=True,
-            timeout=5
-        )
-        desktop_running = display_check.returncode == 0
+        # Check if X server is running by checking the display socket
+        display_check = os.path.exists("/tmp/.X11-unix/X0")
+        desktop_running = display_check
         
-        # Check if VNC is accessible
+        # Check if VNC is accessible by checking process
         vnc_check = subprocess.run(
-            ["netstat", "-ln"],
+            ["pgrep", "-f", "x11vnc"],
             capture_output=True,
             timeout=5
         )
-        vnc_available = ":5900" in vnc_check.stdout.decode()
+        vnc_available = vnc_check.returncode == 0
         
         return HealthResponse(
             status="healthy",
