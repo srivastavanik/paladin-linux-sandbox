@@ -13,8 +13,8 @@ export DISPLAY=:0
 sleep 2
 
 # Start window manager
-echo "Starting XFCE desktop..."
-startxfce4 &
+echo "Starting Fluxbox desktop..."
+fluxbox &
 
 # Wait for desktop to start
 sleep 3

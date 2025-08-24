@@ -7,18 +7,18 @@ ENV VNC_PORT=5900
 ENV NOVNC_PORT=6080
 ENV API_PORT=8080
 
-# Install desktop environment and VNC
+# Install minimal desktop and VNC (optimized for low memory)
 RUN apt-get update && apt-get install -y \
-    xfce4 xfce4-goodies \
+    fluxbox \
     x11vnc xvfb \
     websockify \
     python3 python3-pip \
-    curl wget git \
+    curl wget \
     firefox \
     imagemagick \
-    nano vim \
-    sudo \
-    && rm -rf /var/lib/apt/lists/*
+    nano \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install Python dependencies
 RUN pip3 install fastapi uvicorn pillow requests python-multipart
