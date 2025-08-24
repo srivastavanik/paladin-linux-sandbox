@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip \
     curl wget \
     firefox \
+    geckodriver \
     imagemagick \
     nano \
     net-tools \
@@ -22,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install Python dependencies
-RUN pip3 install fastapi uvicorn pillow requests python-multipart
+RUN pip3 install fastapi uvicorn pillow requests python-multipart selenium
 
 # Create non-root user
 RUN useradd -m -s /bin/bash sandbox && \

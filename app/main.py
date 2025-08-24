@@ -15,6 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image, ImageGrab
 import logging
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.common.by import By
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +59,31 @@ class ScreenshotResponse(BaseModel):
     format: str = "png"
     timestamp: float
     error: Optional[str] = None
+
+class NavigateRequest(BaseModel):
+    url: str
+    wait_ms: Optional[int] = 2000
+
+class ClickRequest(BaseModel):
+    selector: str
+
+class TypeRequest(BaseModel):
+    selector: str
+    text: str
+
+driver: Optional[webdriver.Firefox] = None
+
+def get_driver() -> webdriver.Firefox:
+    global driver
+    if driver is not None:
+        return driver
+    opts = FirefoxOptions()
+    opts.add_argument("--headless")
+    # Use Xvfb display
+    os.environ.setdefault("DISPLAY", ":0")
+    driver = webdriver.Firefox(options=opts)
+    driver.set_page_load_timeout(30)
+    return driver
 
 @app.get("/")
 async def root():
@@ -233,6 +261,37 @@ async def take_screenshot():
             timestamp=time.time(),
             error=f"Screenshot failed: {e}"
         )
+
+@app.post("/browser/navigate")
+async def browser_navigate(req: NavigateRequest):
+    try:
+        d = get_driver()
+        d.get(req.url)
+        time.sleep((req.wait_ms or 2000)/1000)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/browser/click")
+async def browser_click(req: ClickRequest):
+    try:
+        d = get_driver()
+        el = d.find_element(By.CSS_SELECTOR, req.selector)
+        el.click()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/browser/type")
+async def browser_type(req: TypeRequest):
+    try:
+        d = get_driver()
+        el = d.find_element(By.CSS_SELECTOR, req.selector)
+        el.clear()
+        el.send_keys(req.text)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.get("/status")
 async def get_status():
