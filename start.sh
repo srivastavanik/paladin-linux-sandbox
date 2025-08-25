@@ -27,7 +27,7 @@ x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet &
 
 # Start websockify for noVNC (secondary port)
 echo "Starting websockify for noVNC on 6080..."
-websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
+websockify --web=/app/static 0.0.0.0:6080 localhost:5900 --log-file=/var/log/paladin/websockify.log &
 
 # Create sandbox user home directory
 mkdir -p /home/sandbox
@@ -56,12 +56,10 @@ echo "Port status:"
 netstat -ln | grep :5900 || echo "VNC port 5900 not listening"
 netstat -ln | grep :6080 || echo "noVNC port 6080 not listening"
 
-echo "Starting FastAPI server..."
-cd /app
-python3 -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info &
+# FastAPI already started above on ${PORT}
 
 echo "All services started!"
-echo "API Server: http://0.0.0.0:8080"
+echo "API Server: http://0.0.0.0:${PORT}"
 echo "noVNC: http://0.0.0.0:6080/vnc.html"
 echo "VNC Direct: localhost:5900"
 
@@ -71,7 +69,7 @@ while true; do
     if ! pgrep -f "uvicorn main:app" > /dev/null; then
         echo "FastAPI server stopped! Restarting..."
         cd /app
-        python3 -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info &
+        python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT} --log-level info &
     fi
     
     # Check other critical services
@@ -87,7 +85,7 @@ while true; do
     
     if ! pgrep -f "websockify" > /dev/null; then
         echo "websockify stopped! Restarting..."
-        websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
+        websockify --web=/app/static 0.0.0.0:6080 localhost:5900 --log-file=/var/log/paladin/websockify.log &
     fi
     
     sleep 10

@@ -18,6 +18,7 @@ import logging
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -292,6 +293,64 @@ async def browser_type(req: TypeRequest):
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.get("/browser/page_content")
+async def browser_page_content():
+    try:
+        d = get_driver()
+        return {"success": True, "content": d.page_source[:200000]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+class FindRequest(BaseModel):
+    selector: str
+
+@app.post("/browser/find")
+async def browser_find(req: FindRequest):
+    try:
+        d = get_driver()
+        elements = d.find_elements(By.CSS_SELECTOR, req.selector)
+        # Return simple index-based selectors for reuse
+        selectors = []
+        for idx, _ in enumerate(elements):
+            selectors.append(f"{req.selector}:nth-of-type({idx+1})")
+        return {"success": True, "selectors": selectors, "count": len(elements)}
+    except Exception as e:
+        return {"success": False, "error": str(e), "selectors": [], "count": 0}
+
+class KeyRequest(BaseModel):
+    key: str
+
+@app.post("/browser/press_key")
+async def browser_press_key(req: KeyRequest):
+    try:
+        d = get_driver()
+        active = d.switch_to.active_element
+        key = req.key
+        # Map common keys
+        key_map = {
+            "Enter": Keys.ENTER,
+            "Tab": Keys.TAB,
+            "Escape": Keys.ESCAPE,
+            "Backspace": Keys.BACKSPACE
+        }
+        send = key_map.get(key, key)
+        active.send_keys(send)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/browser/alert_present")
+async def browser_alert_present():
+    try:
+        d = get_driver()
+        try:
+            d.switch_to.alert
+            return {"present": True}
+        except Exception:
+            return {"present": False}
+    except Exception as e:
+        return {"present": False, "error": str(e)}
 
 @app.get("/status")
 async def get_status():
