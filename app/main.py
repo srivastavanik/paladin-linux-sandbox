@@ -12,6 +12,8 @@ import base64
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from PIL import Image, ImageGrab
 import logging
@@ -34,6 +36,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for noVNC if directory exists
+if os.path.exists("/app/static"):
+    app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 
 class CommandRequest(BaseModel):
     command: str
@@ -403,14 +409,21 @@ async def get_status():
             "error": str(e)
         }
 
+@app.get("/vnc.html")
+async def vnc_redirect():
+    """Redirect to noVNC viewer."""
+    host = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
+    return RedirectResponse(url=f"/static/vnc.html?autoconnect=true&host={host}&port=443&encrypt=true&path=websockify")
+
 @app.get("/vnc-info")
 async def get_vnc_info():
     """Get VNC connection information."""
+    host = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
     return {
         "vnc_host": "0.0.0.0",
         "vnc_port": 5900,
         "novnc_port": 6080,
-        "novnc_url": f"/static/vnc.html?host={os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')}&port=6080",
+        "novnc_url": f"https://{host}/vnc.html",
         "password_required": False,
         "display": ":0"
     }
