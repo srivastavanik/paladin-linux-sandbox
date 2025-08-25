@@ -15,11 +15,24 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT} --log-level info &
 # Start Xvfb (virtual framebuffer)
 echo "Starting Xvfb..."
 Xvfb :0 -screen 0 1920x1080x24 -nolisten tcp &
+XVFB_PID=$!
 export DISPLAY=:0
+sleep 3
+
+# Verify Xvfb is running
+if ! kill -0 $XVFB_PID 2>/dev/null; then
+    echo "ERROR: Xvfb failed to start"
+    exit 1
+fi
 
 # Start window manager
 echo "Starting Fluxbox desktop..."
 fluxbox &
+sleep 2
+
+# Set a desktop background and open a terminal to show something is running
+xsetroot -solid '#1a1a1a' 2>/dev/null || true
+xterm -geometry 80x24+10+10 -bg black -fg white -title "Paladin Sandbox Terminal" &
 
 # Start VNC server
 echo "Starting x11vnc..."
