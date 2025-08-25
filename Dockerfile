@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     libx11-6 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 \
     libglib2.0-0 libpango-1.0-0 libatk-bridge2.0-0 libgbm1 \
     imagemagick \
+    x11-apps \
     nano \
     net-tools \
     && apt-get clean \
