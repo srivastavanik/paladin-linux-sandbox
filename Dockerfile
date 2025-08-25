@@ -1,71 +1,38 @@
-# Ubuntu Desktop Sandbox with VNC and API
-FROM ubuntu:22.04
+# paladin-linux-sandbox/Dockerfile
+FROM mcr.microsoft.com/playwright/python:v1.45.0-jammy
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:0
-ENV VNC_PORT=5900
-ENV NOVNC_PORT=6080
-ENV API_PORT=8080
+ENV DEBIAN_FRONTEND=noninteractive \
+    DISPLAY=":0" \
+    PYTHONUNBUFFERED=1
 
-# Install minimal desktop and VNC (optimized for low memory)
-RUN apt-get update && apt-get install -y \
-    fluxbox \
-    x11vnc xvfb \
-    websockify \
-    python3 python3-pip \
-    curl wget \
-    bzip2 xz-utils file \
-    ca-certificates \
-    fontconfig \
-    libgtk-3-0 libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 libnss3 libxss1 \
-    libx11-6 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 \
-    libglib2.0-0 libpango-1.0-0 libatk-bridge2.0-0 libgbm1 \
-    imagemagick \
-    x11-apps \
-    nano \
-    net-tools \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# Desktop + viewer + CLI tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    x11vnc xvfb openbox websockify curl jq x11-apps imagemagick ffmpeg \
+    git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Firefox (official tarball) and geckodriver
-ENV GECKODRIVER_VERSION=0.34.0 FIREFOX_URL=https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US
-RUN wget -O /tmp/firefox.tar.bz2 "$FIREFOX_URL" \
-    && file /tmp/firefox.tar.bz2 || true \
-    && (tar -xjf /tmp/firefox.tar.bz2 -C /opt || tar -xJf /tmp/firefox.tar.bz2 -C /opt || (mkdir -p /opt/firefox && tar -xzf /tmp/firefox.tar.bz2 -C /opt/firefox --strip-components=1)) \
-    && ln -sf /opt/firefox/firefox /usr/local/bin/firefox \
-    && wget -O /tmp/geckodriver.tar.gz https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz \
-    && tar -xzf /tmp/geckodriver.tar.gz -C /usr/local/bin \
-    && chmod +x /usr/local/bin/geckodriver \
-    && rm -f /tmp/firefox.tar.bz2 /tmp/geckodriver.tar.gz
+# Security tools (light baseline)
+RUN pip install --no-cache-dir \
+      fastapi uvicorn sse-starlette httpx pydantic-settings \
+      pillow semgrep bandit pip-audit gitleaks trivy
 
-# Install Python dependencies
-RUN pip3 install fastapi uvicorn pillow requests python-multipart selenium
-
-# Create non-root user
-RUN useradd -m -s /bin/bash sandbox && \
-    echo "sandbox:sandbox" | chpasswd && \
-    usermod -aG sudo sandbox
-
-# Create app directory
+# App code
 WORKDIR /app
+COPY sandbox_api /app/sandbox_api
+COPY playwright_scenarios /app/playwright_scenarios
 
-# Copy FastAPI server
-COPY app/ /app/
-
-# Create noVNC static files directory
-RUN mkdir -p /app/static
-
-# Download noVNC
-RUN wget -qO- https://github.com/novnc/noVNC/archive/v1.4.0.tar.gz | tar xz && \
+# Download noVNC for web viewer
+RUN mkdir -p /app/static && \
+    wget -qO- https://github.com/novnc/noVNC/archive/v1.4.0.tar.gz | tar xz && \
     mv noVNC-1.4.0/* /app/static/ && \
     rm -rf noVNC-1.4.0
 
-# Create startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
-
-# Expose ports
+# Playwright browsers are already pre-installed in base image
 EXPOSE 8080 6080
 
-# Start services
-CMD ["/start.sh"]
+CMD bash -lc "\
+  Xvfb :0 -screen 0 1920x1080x24 & \
+  openbox & \
+  x11vnc -display :0 -nopw -forever -shared -rfbport 5900 & \
+  websockify 0.0.0.0:6080 localhost:5900 & \
+  uvicorn sandbox_api.main:app --host 0.0.0.0 --port 8080"

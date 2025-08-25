@@ -1,0 +1,13 @@
+# paladin-linux-sandbox/docker-compose.yml
+version: "3.8"
+services:
+  linux-sandbox:
+    build: .
+    ports:
+      - "8080:8080"   # API
+      - "6080:6080"   # noVNC
+    shm_size: "2gb"
+    environment:
+      - CONTROL_PLANE_URL=${CONTROL_PLANE_URL:-}
+      - CONTROL_PLANE_TOKEN=${CONTROL_PLANE_TOKEN:-}
+      - ALLOW_EXEC=1
