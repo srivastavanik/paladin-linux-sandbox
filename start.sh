@@ -25,9 +25,12 @@ fluxbox &
 echo "Starting x11vnc..."
 x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet &
 
+# Create log directory if it doesn't exist
+mkdir -p /var/log/paladin
+
 # Start websockify for noVNC (secondary port)
 echo "Starting websockify for noVNC on 6080..."
-websockify --web=/app/static 0.0.0.0:6080 localhost:5900 --log-file=/var/log/paladin/websockify.log &
+websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
 
 # Create sandbox user home directory
 mkdir -p /home/sandbox

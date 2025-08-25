@@ -83,14 +83,36 @@ driver: Optional[webdriver.Firefox] = None
 def get_driver() -> webdriver.Firefox:
     global driver
     if driver is not None:
-        return driver
+        try:
+            # Check if driver is still alive
+            driver.current_url
+            return driver
+        except:
+            # Driver is dead, recreate it
+            driver = None
+    
+    logger.info("Creating new Firefox driver with display :0")
     opts = FirefoxOptions()
-    opts.add_argument("--headless")
+    # DO NOT use headless mode - we want to see the browser!
+    # opts.add_argument("--headless")
+    
     # Use Xvfb display
-    os.environ.setdefault("DISPLAY", ":0")
-    driver = webdriver.Firefox(options=opts)
-    driver.set_page_load_timeout(30)
-    return driver
+    os.environ["DISPLAY"] = ":0"
+    
+    # Add preferences for better compatibility
+    opts.set_preference("browser.download.folderList", 2)
+    opts.set_preference("browser.download.manager.showWhenStarting", False)
+    opts.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/octet-stream")
+    
+    try:
+        driver = webdriver.Firefox(options=opts)
+        driver.set_page_load_timeout(30)
+        driver.set_window_size(1920, 1080)
+        logger.info("Firefox driver created successfully")
+        return driver
+    except Exception as e:
+        logger.error(f"Failed to create Firefox driver: {e}")
+        raise
 
 @app.get("/")
 async def root():
@@ -272,11 +294,37 @@ async def take_screenshot():
 @app.post("/browser/navigate")
 async def browser_navigate(req: NavigateRequest):
     try:
+        logger.info(f"Browser navigate requested to: {req.url}")
         d = get_driver()
+        
+        # Log current state
+        current_url = d.current_url
+        logger.info(f"Current URL before navigation: {current_url}")
+        
+        # Navigate to the URL
         d.get(req.url)
-        time.sleep((req.wait_ms or 2000)/1000)
-        return {"success": True}
+        logger.info(f"Navigation command sent to browser")
+        
+        # Wait for page to load
+        wait_time = (req.wait_ms or 2000) / 1000
+        logger.info(f"Waiting {wait_time} seconds for page to load")
+        time.sleep(wait_time)
+        
+        # Verify navigation
+        new_url = d.current_url
+        logger.info(f"Current URL after navigation: {new_url}")
+        
+        # Take a screenshot after navigation for debugging
+        try:
+            screenshot_path = f"/tmp/nav_{int(time.time())}.png"
+            d.save_screenshot(screenshot_path)
+            logger.info(f"Screenshot saved to {screenshot_path}")
+        except Exception as ss_error:
+            logger.warning(f"Failed to save debug screenshot: {ss_error}")
+        
+        return {"success": True, "url": new_url}
     except Exception as e:
+        logger.error(f"Browser navigation failed: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/browser/click")
