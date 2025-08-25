@@ -28,9 +28,20 @@ x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet &
 # Create log directory if it doesn't exist
 mkdir -p /var/log/paladin
 
-# Start websockify for noVNC (secondary port)
-echo "Starting websockify for noVNC on 6080..."
-websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
+# Start websockify for noVNC (on primary port with path-based routing)
+echo "Starting websockify for noVNC..."
+# For Render deployment, we need to use the primary port with path-based routing
+if [ -n "$PORT" ]; then
+    echo "Starting websockify on path /websockify using primary port $PORT"
+    # Kill any existing websockify process
+    pkill -f websockify || true
+    sleep 1
+    # Start websockify in the background
+    websockify --web=/app/static 0.0.0.0:6080 localhost:5900 > /var/log/paladin/websockify.log 2>&1 &
+else
+    # Local development
+    websockify --web=/app/static 0.0.0.0:6080 localhost:5900 &
+fi
 
 # Create sandbox user home directory
 mkdir -p /home/sandbox

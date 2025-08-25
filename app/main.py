@@ -41,6 +41,59 @@ app.add_middleware(
 if os.path.exists("/app/static"):
     app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 
+# Import WebSocket for VNC proxy
+from fastapi import WebSocket
+import asyncio
+import socket
+
+# Simple TCP proxy for WebSocket to VNC
+@app.websocket("/websockify")
+async def websocket_proxy(websocket: WebSocket):
+    """Proxy WebSocket connections to the local VNC server."""
+    await websocket.accept()
+    logger.info("WebSocket connection accepted for VNC proxy")
+    
+    vnc_host = "localhost"
+    vnc_port = 5900
+    
+    try:
+        # Connect to VNC server
+        vnc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        vnc_socket.connect((vnc_host, vnc_port))
+        vnc_socket.setblocking(False)
+        
+        async def ws_to_vnc():
+            while True:
+                try:
+                    data = await websocket.receive_bytes()
+                    vnc_socket.sendall(data)
+                except Exception as e:
+                    logger.error(f"WS to VNC error: {e}")
+                    break
+        
+        async def vnc_to_ws():
+            while True:
+                try:
+                    await asyncio.sleep(0.01)
+                    try:
+                        data = vnc_socket.recv(4096)
+                        if data:
+                            await websocket.send_bytes(data)
+                    except socket.error:
+                        pass
+                except Exception as e:
+                    logger.error(f"VNC to WS error: {e}")
+                    break
+        
+        # Run both directions concurrently
+        await asyncio.gather(ws_to_vnc(), vnc_to_ws())
+        
+    except Exception as e:
+        logger.error(f"WebSocket proxy error: {e}")
+    finally:
+        vnc_socket.close()
+        await websocket.close()
+
 class CommandRequest(BaseModel):
     command: str
     timeout: Optional[int] = 30
@@ -494,7 +547,12 @@ async def get_status():
 async def vnc_redirect():
     """Redirect to noVNC viewer."""
     host = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
-    return RedirectResponse(url=f"/static/vnc.html?autoconnect=true&host={host}&port=443&encrypt=true&path=websockify")
+    # For Render, use the WebSocket proxy path
+    if 'onrender.com' in host:
+        return RedirectResponse(url=f"/static/vnc.html?autoconnect=true&host={host}&port=443&encrypt=true&path=websockify")
+    else:
+        # Local development
+        return RedirectResponse(url=f"/static/vnc.html?autoconnect=true&host={host}&port=6080")
 
 @app.get("/vnc-info")
 async def get_vnc_info():
