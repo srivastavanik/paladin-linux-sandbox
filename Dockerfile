@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     websockify \
     python3 python3-pip \
     curl wget \
-    bzip2 \
+    bzip2 xz-utils file \
     ca-certificates \
     fontconfig \
     libgtk-3-0 libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 libnss3 libxss1 \
@@ -27,9 +27,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install Firefox (official tarball) and geckodriver
-ENV GECKODRIVER_VERSION=0.34.0
-RUN wget -O /tmp/firefox.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" \
-    && tar -xjf /tmp/firefox.tar.bz2 -C /opt \
+ENV GECKODRIVER_VERSION=0.34.0 FIREFOX_URL=https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US
+RUN wget -O /tmp/firefox.tar.bz2 "$FIREFOX_URL" \
+    && file /tmp/firefox.tar.bz2 || true \
+    && (tar -xjf /tmp/firefox.tar.bz2 -C /opt || tar -xJf /tmp/firefox.tar.bz2 -C /opt || (mkdir -p /opt/firefox && tar -xzf /tmp/firefox.tar.bz2 -C /opt/firefox --strip-components=1)) \
     && ln -sf /opt/firefox/firefox /usr/local/bin/firefox \
     && wget -O /tmp/geckodriver.tar.gz https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz \
     && tar -xzf /tmp/geckodriver.tar.gz -C /usr/local/bin \
